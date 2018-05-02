@@ -43,7 +43,6 @@ DROP TABLE IF EXISTS question_likes;
 
 CREATE TABLE question_likes(
   id INTEGER PRIMARY KEY,
-  like_flag BOOLEAN NOT NULL,
   ref_user_id INTEGER NOT NULL,
   ref_question_id INTEGER NOT NULL,
 
@@ -77,6 +76,6 @@ VALUES
 ('Come get it!',(SELECT id FROM users WHERE fname='Mary'),1,(SELECT id FROM questions WHERE title='FYI'));
 
 INSERT INTO
-question_likes(like_flag,ref_user_id,ref_question_id)
+question_likes(ref_user_id,ref_question_id)
 VALUES
-(1,(SELECT id FROM users WHERE fname='John'),(SELECT id FROM questions WHERE title='FYI'));
+((SELECT id FROM users WHERE fname='John'),(SELECT id FROM questions WHERE title='FYI'));

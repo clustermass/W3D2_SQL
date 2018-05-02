@@ -54,6 +54,14 @@ class User
   def authored_replies
     Reply.find_by_user_id(@id)
   end
+
+  def followed_questions
+    QuestionFollow.followed_questions_for_user_id(@id)
+  end
+
+  def liked_questions
+    QuestionLike.liked_questions_for_user_id(@id)
+  end
 end
 
 class Question
@@ -78,6 +86,10 @@ class Question
     reply.map {|question| Question.new(question)}
   end
 
+  def self.most_followed(n)
+    QuestionFollow.most_followed_questions(n)
+  end
+
   def author
     reply = QuestionsDatabase.instance.execute(<<-SQL,@author_id)
     SELECT
@@ -94,9 +106,64 @@ class Question
     Reply.find_by_question_id(@id)
   end
 
+  def followers
+    QuestionFollow.followers_for_question_id(@id)
+  end
+
+  def likers
+    QuestionLike.likers_for_question_id(@id)
+  end
+
+  def num_likes
+    QuestionLike.num_likes_for_question_id(@id)
+  end
 end
 
-class QuestionFollows
+class QuestionFollow
+  def self.followers_for_question_id(question_id) #TA
+    reply = QuestionsDatabase.instance.execute(<<-SQL,question_id)
+    SELECT
+    users.id,fname,lname
+    FROM
+    users
+    JOIN question_follows ON question_follows.user_id = users.id
+    WHERE
+    question_follows.question_id = ?
+    SQL
+    reply.map {|user| User.new(user)}
+  end
+
+  def self.followed_questions_for_user_id(user_id) #TA
+    reply = QuestionsDatabase.instance.execute(<<-SQL,user_id)
+    SELECT
+      *
+    FROM
+    questions
+    JOIN question_follows ON question_follows.question_id = questions.id
+    WHERE
+    question_follows.user_id = ?
+    SQL
+    reply.map{|question| Question.new(question)}
+  end
+
+  def self.most_followed_questions(n)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, n)
+    SELECT
+      *
+    FROM
+      questions
+      JOIN
+        question_follows ON questions.id = question_follows.question_id
+    GROUP BY
+      question_follows.question_id
+    ORDER BY
+      COUNT(question_follows.question_id) DESC
+    LIMIT
+      ?
+    SQL
+
+    reply.map {|question| Question.new(question)}
+  end
 end
 
 class Reply
@@ -177,6 +244,69 @@ class Reply
       replies
     WHERE
       ref_reply_id = ?
+      SQL
   end
 
+end
+
+class QuestionLike
+  def self.likers_for_question_id(question_id)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+    SELECT
+      *
+    FROM
+      users
+    JOIN
+      question_likes ON question_likes.ref_user_id = users.id
+    WHERE
+      question_likes.ref_question_id = ?
+    SQL
+    reply.map{|user| User.new(user)}
+  end
+
+
+  def self.num_likes_for_question_id(question_id)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+    SELECT
+      COUNT(*)
+    FROM
+      question_likes
+    WHERE
+      question_likes.ref_question_id = ?
+    SQL
+    reply.first.values.first
+  end
+
+
+  def self.liked_questions_for_user_id(user_id)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+    SELECT
+      *
+    FROM
+      questions
+      JOIN
+        question_likes ON question_likes.ref_question_id = questions.id
+    WHERE
+      ? = question_likes.ref_question_id
+    SQL
+
+    reply.map {|question| Question.new(question) }
+  end
+
+  def self.most_liked_questions(n)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, n)
+    SELECT
+      *
+    FROM
+      questions
+      JOIN
+        question_likes ON question_likes.ref_question_id = questions.id
+    GROUP BY
+      question_likes.ref_question_id
+    ORDER BY
+      COUNT(questions.id) DESC
+    LIMIT ?
+    SQL
+    reply.map {|question| Question.new(question)}
+  end
 end
