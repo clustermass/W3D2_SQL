@@ -62,6 +62,31 @@ class User
   def liked_questions
     QuestionLike.liked_questions_for_user_id(@id)
   end
+
+  def save
+    if @id
+      update
+    else
+      QuestionsDatabase.instance.execute(<<-SQL,@fname,@lname)
+      INSERT INTO
+          users (fname,lname)
+      VALUES
+          (?,?)
+      SQL
+      @id = QuestionsDatabase.instance.last_insert_row_id
+    end
+  end
+
+  def update
+    QuestionsDatabase.instance.execute(<<-SQL,@fname,@lname,@id)
+    UPDATE
+      users
+    SET
+      fname = ?, lname = ?
+    WHERE
+      users.id = ?
+    SQL  
+  end
 end
 
 class Question
@@ -116,6 +141,10 @@ class Question
 
   def num_likes
     QuestionLike.num_likes_for_question_id(@id)
+  end
+
+  def self.most_liked(n)
+    QuestionLike.most_liked_questions(n)
   end
 end
 
@@ -309,4 +338,6 @@ class QuestionLike
     SQL
     reply.map {|question| Question.new(question)}
   end
+
+
 end
